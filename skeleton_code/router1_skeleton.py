@@ -5,22 +5,24 @@ import time
 import os
 import glob
 
+#135
+#103
+#181
+
 
 # Helper Functions
 
 # The purpose of this function is to set up a socket connection.
-'''
+
 def create_socket(host, port):
-    # 1. Create a socket.
-    ## soc = ...
-    # 2. Try connecting the socket to the host and port.
-    try:
-        ## ...
+    soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # 1. Create a socket.
+    
+    try: # 2. Try connecting the socket to the host and port.
+        soc.connect(host,port)
     except:
         print("Connection Error to", port)
         sys.exit()
-    # 3. Return the connected socket.
-    return soc '''
+    return soc  # 3. Return the connected socket.
 
 
 # The purpose of this function is to read in a CSV file.
@@ -100,26 +102,22 @@ def find_ip_range(network_dst, netmask):
     compliment = bit_not(int(netmask, 2)) # 2. Perform a bitwise NOT on the netmask to get the number of total IPs in this range. Because the built-in bitwise NOT or compliment operator (~) works with signed ints, we need to create our own bitwise NOT operator for our unsigned int (a netmask).
     min_ip = bitwise_and # 3. Add the total number of IPs to the minimum IP to get the maximum IP address in the range.
     max_ip = min_ip + compliment
-    return [min_ip, max_ip] # 4. Return a list containing the minimum and maximum IP in the range.
+    return [min_ip, max_ip] # 4. Return a list containing the minimum and maximum IP in the range. 
 
 
 # The purpose of this function is to perform a bitwise NOT on an unsigned integer.
 def bit_not(n, numbits=32):
     return (1 << numbits) - 1 - n
 
-'''
+
 # The purpose of this function is to write packets/payload to file.
 def write_to_file(path, packet_to_write, send_to_router=None):
-    # 1. Open the output file for appending.
-    out_file = open(path, "a")
-    # 2. If this router is not sending, then just append the packet to the output file.
-    ## if ...:
+    out_file = open(path, "a") # 1. Open the output file for appending.
+    if send_to_router is None: # 2. If this router is not sending, then just append the packet to the output file.
         out_file.write(packet_to_write + "\n")
-    # 3. Else if this router is sending, then append the intended recipient, along with the packet, to the output file.
-    else:
+    else: # 3. Else if this router is sending, then append the intended recipient, along with the packet, to the output file.
         out_file.write(packet_to_write + " " + "to Router " + send_to_router + "\n")
-    # 4. Close the output file.
-    out_file.close() '''
+    out_file.close() # 4. Close the output file.
 
 
 # Main Program
@@ -133,8 +131,10 @@ for f in files:
 
 
 # 1. Connect to the appropriate sending ports (based on the network topology diagram).
-## ...
-## ...
+r2_port = 8002
+r4_port = 8004
+r2_socket = create_socket('localhost', r2_port) 
+r4_socket = create_socket('localhost', r4_port)
 
 
 forwarding_table = read_csv("../input/router_1_table.csv") # 2. Read in and store the forwarding table.
@@ -172,24 +172,26 @@ for packet in packets_table:
 
     # 10. If no port is found, then set the sending port to the default port.
     port = default_gateway_port
-'''
+
     # 11. Either
     # (a) send the new packet to the appropriate port (and append it to sent_by_router_1.txt),
     # (b) append the payload to out_router_1.txt without forwarding because this router is the last hop, or
     # (c) append the new packet to discarded_by_router_1.txt and do not forward the new packet
-    ## if ...:
+    if port == r2_port:
         print("sending packet", new_packet, "to Router 2")
-        ## ...
-    ## elif ...
+        r2_socket.send(new_packet) # what function here?
+        write_to_file('../output/sent_by_router_1.txt', new_packet, '2')
+    elif port == r4_port:
         print("sending packet", new_packet, "to Router 4")
-        ## ...
-    ## elif ...:
+        r4_socket.send(new_packet)
+        write_to_file('../output/sent_by_router_1.txt', new_packet, '4')
+    elif port == default_gateway_port:
         print("OUT:", payload)
-        ## ...
+        write_to_file('../output/out_router_1.txt', payload)
     else:
         print("DISCARD:", new_packet)
-        ## ...
+        write_to_file('../output/discarded_by_router_1.txt', new_packet)
 
     # Sleep for some time before sending the next packet (for debugging purposes)
     time.sleep(1)
- '''
+ 
