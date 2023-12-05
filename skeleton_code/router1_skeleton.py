@@ -1,5 +1,5 @@
 from importlib.resources import read_binary
-import socket
+from socket import *
 import sys
 import time
 import os
@@ -15,10 +15,10 @@ import glob
 # The purpose of this function is to set up a socket connection.
 
 def create_socket(host, port):
-    soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # 1. Create a socket.
+    soc = socket(AF_INET, SOCK_STREAM) # 1. Create a socket.
     
     try: # 2. Try connecting the socket to the host and port.
-        soc.connect(host,port)
+        soc.connect((host,port))
     except:
         print("Connection Error to", port)
         sys.exit()
@@ -58,15 +58,16 @@ def generate_forwarding_table_with_range(table):
             network_dst_string = row[0] # 4. Store the network destination and netmask.
             netmask_string = row[1]
             network_dst_bin = ip_to_bin(network_dst_string) # 5. Convert both strings into their binary representations.
-            #print("network " +network_dst_string)
-            #print("network bin " + network_dst_bin)
+            print("network " +network_dst_string)
+            print("network bin " + network_dst_bin)
             netmask_bin = ip_to_bin(netmask_string)
-            #print("netmask "+ netmask_string)
-            #print("netmask bin " + netmask_bin)
+            print("netmask "+ netmask_string)
+            print("netmask bin " + netmask_bin)
             ip_range = find_ip_range(network_dst_bin, netmask_bin)  # 6. Find the IP range.
-            #print(bin(ip_range[0]))
-            #print(bin(ip_range[1]))
-            new_row =  [network_dst_string, netmask_string, row[2], bin(ip_range[0]), bin(ip_range[1])]# 7. Build the new row.
+            print("range 0")
+            print(ip_range[0])
+            print(ip_range[1])
+            new_row =  [network_dst_string, netmask_string, row[3], (ip_range[0]), (ip_range[1]) ]# 7. Build the new row.
             
             new_table.append(new_row) # 8. Append the new row to new_table.
     
@@ -102,7 +103,13 @@ def find_ip_range(network_dst, netmask):
     compliment = bit_not(int(netmask, 2)) # 2. Perform a bitwise NOT on the netmask to get the number of total IPs in this range. Because the built-in bitwise NOT or compliment operator (~) works with signed ints, we need to create our own bitwise NOT operator for our unsigned int (a netmask).
     min_ip = bitwise_and # 3. Add the total number of IPs to the minimum IP to get the maximum IP address in the range.
     max_ip = min_ip + compliment
-    return [min_ip, max_ip] # 4. Return a list containing the minimum and maximum IP in the range. 
+    min2 = str(bin(min_ip))[2:]
+    max2 = str(bin(max_ip))[2:]
+    while len(min2) < 32:
+        min2 = '0' + min2
+    while len(max2) < 32:
+        max2 = '0' + max2
+    return [min2, max2] # 4. Return a list containing the minimum and maximum IP in the range. 
 
 
 # The purpose of this function is to perform a bitwise NOT on an unsigned integer.
@@ -131,10 +138,11 @@ for f in files:
 
 
 # 1. Connect to the appropriate sending ports (based on the network topology diagram).
+
 r2_port = 8002
 r4_port = 8004
-r2_socket = create_socket('localhost', r2_port) 
-r4_socket = create_socket('localhost', r4_port)
+r2_socket = create_socket('127.0.0.1', r2_port) 
+# r4_socket = create_socket('127.0.0.1', r4_port)
 
 
 forwarding_table = read_csv("../input/router_1_table.csv") # 2. Read in and store the forwarding table.
@@ -154,7 +162,7 @@ for packet in packets_table:
 
     # 8. Decrement the TTL by 1 and construct a new packet with the new TTL.
     new_ttl = str(int(ttl) - 1)
-    new_packet = [sourceIP, destinationIP, payload, new_ttl]
+    new_packet = f"{sourceIP},{destinationIP},{payload},{new_ttl}"
 
     
 
@@ -165,33 +173,36 @@ for packet in packets_table:
     # 9. Find the appropriate sending port to forward this new packet to.
     port = None
     for row in forwarding_table_with_range:
+        #print(row)
         min_ip, max_ip = row[3], row[4]
-        if min_ip <= destinationIP_bin <= max_ip:
+        if int(min_ip,2) <= destinationIP_int and destinationIP_int <= int(max_ip,2):
            port = row[2]
            break
 
     # 10. If no port is found, then set the sending port to the default port.
-    port = default_gateway_port
+    if port == None:
+        port = default_gateway_port
+    
 
     # 11. Either
     # (a) send the new packet to the appropriate port (and append it to sent_by_router_1.txt),
     # (b) append the payload to out_router_1.txt without forwarding because this router is the last hop, or
     # (c) append the new packet to discarded_by_router_1.txt and do not forward the new packet
-    if port == r2_port:
-        print("sending packet", new_packet, "to Router 2")
-        r2_socket.send(new_packet) # what function here?
-        write_to_file('../output/sent_by_router_1.txt', new_packet, '2')
-    elif port == r4_port:
-        print("sending packet", new_packet, "to Router 4")
-        r4_socket.send(new_packet)
-        write_to_file('../output/sent_by_router_1.txt', new_packet, '4')
-    elif port == default_gateway_port:
+    if port == '127.0.0.1':
         print("OUT:", payload)
         write_to_file('../output/out_router_1.txt', payload)
+    elif port == str(r2_port) and int(new_ttl) >0:
+        print("sending packet", new_packet, "to Router 2")
+        r2_socket.send(new_packet.encode()) # what function here?
+        write_to_file('../output/sent_by_router_1.txt', new_packet, '2')
+    elif port == str(r4_port) and int(new_ttl) >0:
+        print("sending packet", new_packet, "to Router 4")
+        #r4_socket.send(new_packet)
+        write_to_file('../output/sent_by_router_1.txt', new_packet, '4')
     else:
         print("DISCARD:", new_packet)
         write_to_file('../output/discarded_by_router_1.txt', new_packet)
 
     # Sleep for some time before sending the next packet (for debugging purposes)
-    time.sleep(1)
+    time.sleep(.25)
  
