@@ -118,7 +118,7 @@ def receive_packet(connection, max_buffer_size):
     decoded_packet = received_packet.strip()
     
     # 3. Append the packet to received_by_router_2.txt.
-    write_to_file('../output/received_by_router_2.txt', decoded_packet)
+    write_to_file('../output/received_by_router_4.txt', decoded_packet)
     
     # 4. Split the packet by the delimiter (assuming ',' as the delimiter).
     packet = decoded_packet.split(',')
@@ -145,7 +145,7 @@ def write_to_file(path, packet_to_write, send_to_router=None):
 def start_server():
     # 1. Create a socket.
     host = '127.0.0.1'
-    port = 8002
+    port = 8004
     soc = socket(AF_INET, SOCK_STREAM)
     soc.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     print("Socket created")
@@ -162,7 +162,7 @@ def start_server():
     print("Socket now listening")
 
     # 4. Read in and store the forwarding table.
-    forwarding_table = read_csv('../input/router_2_table.csv')
+    forwarding_table = read_csv('../input/router_4_table.csv')
     # 5. Store the default gateway port.
     default_gateway_port = find_default_gateway(forwarding_table)  # Assuming you have a find_default_gateway function
     # 6. Generate a new forwarding table that includes the IP ranges for matching against destination IPS.
@@ -186,13 +186,13 @@ def start_server():
 # The purpose of this function is to receive and process incoming packets.
 def processing_thread(connection, ip, port, forwarding_table_with_range, default_gateway_port, max_buffer_size=5120):
     # 1. Connect to the appropriate sending ports (based on the network topology diagram).
-    router3_port = 8003  
-    router4_port = 8004 
+    router5_port = 8005
+    router6_port = 8006
 
-    router3_socket = socket(AF_INET, SOCK_STREAM)
-    router3_socket.connect(('127.0.0.1', router3_port))
-    router4_socket = socket(AF_INET, SOCK_STREAM)
-    router4_socket.connect(('127.0.0.1', router4_port))
+    router5_socket = socket(AF_INET, SOCK_STREAM)
+    router5_socket.connect(('127.0.0.1', router5_port))
+    router6_socket = socket(AF_INET, SOCK_STREAM)
+    router6_socket.connect(('127.0.0.1', router5_port))
     
 
     # 2. Continuously process incoming packets
@@ -238,18 +238,18 @@ def processing_thread(connection, ip, port, forwarding_table_with_range, default
 
         if port == '127.0.0.1':
             print("OUT:", payload)
-            write_to_file('../output/out_router_2.txt', payload)
-        elif port == str(router3_port) and int(new_ttl) >0:
-            print("sending packet", new_packet, "to Router 3")
-            router3_socket.send(new_packet.encode()) # what function here?
-            write_to_file('../output/sent_by_router_2.txt', new_packet, '3')
-        elif port == str(router4_port) and int(new_ttl) >0:
-            print("sending packet", new_packet, "to Router 4")
-            router4_socket.send(new_packet.encode())
-            write_to_file('../output/sent_by_router_2.txt', new_packet, '4')
+            write_to_file('../output/out_router_4.txt', payload)
+        elif port == str(router5_port) and int(new_ttl) >0:
+            print("sending packet", new_packet, "to Router 5")
+            router5_socket.send(new_packet.encode()) # what function here?
+            write_to_file('../output/sent_by_router_4.txt', new_packet, '5')
+        elif port == str(router6_port) and int(new_ttl) >0:
+            print("sending packet", new_packet, "to Router 6")
+            router6_socket.send(new_packet.encode())
+            write_to_file('../output/sent_by_router_4.txt', new_packet, '6')
         else:
             print("DISCARD:", new_packet)
-            write_to_file('../output/discarded_by_router_2.txt', new_packet)
+            write_to_file('../output/discarded_by_router_4.txt', new_packet)
 
 
 # Main Program
